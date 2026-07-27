@@ -1,0 +1,10 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Flarya
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/* Only the right member list. Chat decorations remain untouched. */
+[data-list-item-id^="members-"] :is([class*="clanTag"], [class*="guildTag"]) {
+    display: none !important;
+}

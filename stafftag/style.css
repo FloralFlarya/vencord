@@ -1,0 +1,24 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Flarya
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+.vc-stafftag {
+    display: inline-flex;
+    align-items: center;
+    height: 15px;
+    margin-left: 4px;
+    padding: 0 4px;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    vertical-align: middle;
+}
+
+.vc-member-list-decorators-wrapper .vc-stafftag {
+    flex-shrink: 0;
+    margin-left: 2px;
+}
