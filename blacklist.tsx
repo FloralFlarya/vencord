@@ -31,6 +31,11 @@ const ChannelNotificationActions = findByPropsLazy("updateChannelOverrideSetting
     updateChannelOverrideSettings: (guildId: string | null, channelId: string, settings: object) => void;
 };
 
+const RelationshipActions = findByPropsLazy("ignoreUser", "unignoreUser") as {
+    ignoreUser?: (userId: string) => Promise<unknown> | unknown;
+    unignoreUser?: (userId: string) => Promise<unknown> | unknown;
+};
+
 const settings = definePluginSettings({
     users: {
         type: OptionType.STRING,
@@ -67,14 +72,31 @@ function saveIds(next: string[]) {
     for (const id of nextSet) if (!previous.has(id)) {
         muteVoice(id);
         muteSoundboard(id);
+        void setIgnored(id, true);
     }
     for (const id of previous) if (!nextSet.has(id)) {
         restoreVoice(id);
         restoreSoundboard(id);
+        void setIgnored(id, false);
     }
     refreshUnblockChoices();
     refreshDom();
     (TypingStore as any).emitChange?.();
+}
+
+async function setIgnored(userId: string, ignored: boolean) {
+    try {
+        const action = ignored ? RelationshipActions.ignoreUser : RelationshipActions.unignoreUser;
+        if (typeof action === "function") {
+            await action(userId);
+            return;
+        }
+        const url = `/users/@me/relationships/${userId}/ignore`;
+        if (ignored) await RestAPI.put({ url });
+        else await RestAPI.del({ url });
+    } catch (error) {
+        console.warn(`[Blacklist] Failed to ${ignored ? "ignore" : "unignore"} ${userId}`, error);
+    }
 }
 
 function muteDirectMessage(userId: string) {
@@ -687,6 +709,7 @@ export default definePlugin({
         originalGetTypingUsers = TypingStore.getTypingUsers.bind(TypingStore);
         TypingStore.getTypingUsers = filterTypingUsers;
         muteBlockedVoices();
+        ids().forEach(id => void setIgnored(id, true));
         refreshDom();
         observer = new MutationObserver(scheduleRefresh);
         observer.observe(document.body, { childList: true, subtree: true });
