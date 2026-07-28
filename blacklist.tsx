@@ -67,12 +67,10 @@ function saveIds(next: string[]) {
     for (const id of nextSet) if (!previous.has(id)) {
         muteVoice(id);
         muteSoundboard(id);
-        muteDirectMessage(id);
     }
     for (const id of previous) if (!nextSet.has(id)) {
         restoreVoice(id);
         restoreSoundboard(id);
-        unmuteDirectMessage(id);
     }
     refreshUnblockChoices();
     refreshDom();
@@ -579,7 +577,7 @@ function list(channelId: string) {
 
 export default definePlugin({
     name: "Blacklist",
-    description: "Completely hides selected users and also mutes their direct-message notifications.",
+    description: "Hides selected users, ignores their direct messages and mutes their voice audio locally.",
     authors: [{ id: 435847641041993759n, name: "Flarya" }],
     dependencies: ["CommandsAPI"],
     settings,
@@ -622,7 +620,7 @@ export default definePlugin({
     commands: [
         {
             name: "block",
-            description: "Hide a user and mute their direct messages, or show the blacklist",
+            description: "Ignore a user locally, or show the ignore list",
             inputType: ApplicationCommandInputType.BUILT_IN,
             options: [
                 {
@@ -650,7 +648,7 @@ export default definePlugin({
         },
         {
             name: "unblock",
-            description: "Stop hiding a user and restore their direct-message notifications",
+            description: "Stop ignoring a user locally",
             inputType: ApplicationCommandInputType.BUILT_IN,
             options: [unblockUserOption],
             execute: (args, ctx) => {
@@ -689,7 +687,6 @@ export default definePlugin({
         originalGetTypingUsers = TypingStore.getTypingUsers.bind(TypingStore);
         TypingStore.getTypingUsers = filterTypingUsers;
         muteBlockedVoices();
-        muteBlockedDirectMessages();
         refreshDom();
         observer = new MutationObserver(scheduleRefresh);
         observer.observe(document.body, { childList: true, subtree: true });
