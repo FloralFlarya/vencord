@@ -54,12 +54,19 @@ const settings = definePluginSettings({
         description: "Saved Soundboard mute states for users muted by Blacklist.",
         default: "{}",
         hidden: true
+    },
+    ignoredUsers: {
+        type: OptionType.STRING,
+        description: "Users for whom Blacklist has already enabled Discord Ignore.",
+        default: "",
+        hidden: true
     }
 });
 
 let observer: MutationObserver | undefined;
 let refreshFrame = 0;
 let originalGetTypingUsers: ((channelId: string) => Record<string, number>) | undefined;
+const pendingIgnoreRequests = new Set<string>();
 
 function ids(): string[] {
     return [...new Set((settings.store.users.match(/\d{17,20}/g) ?? []))];
@@ -84,18 +91,36 @@ function saveIds(next: string[]) {
     (TypingStore as any).emitChange?.();
 }
 
+function ignoredIds(): string[] {
+    return [...new Set((settings.store.ignoredUsers || "").match(/\d{17,20}/g) ?? [])];
+}
+
+function saveIgnoredIds(next: string[]) {
+    settings.store.ignoredUsers = [...new Set(next)].join(",");
+}
+
 async function setIgnored(userId: string, ignored: boolean) {
+    if (pendingIgnoreRequests.has(userId)) return;
+    const currentIgnored = new Set(ignoredIds());
+    if (ignored && currentIgnored.has(userId)) return;
+    if (!ignored && !currentIgnored.has(userId)) return;
+    pendingIgnoreRequests.add(userId);
     try {
         const action = ignored ? RelationshipActions.ignoreUser : RelationshipActions.unignoreUser;
         if (typeof action === "function") {
             await action(userId);
-            return;
+        } else {
+            const url = `/users/@me/relationships/${userId}/ignore`;
+            if (ignored) await RestAPI.put({ url });
+            else await RestAPI.del({ url });
         }
-        const url = `/users/@me/relationships/${userId}/ignore`;
-        if (ignored) await RestAPI.put({ url });
-        else await RestAPI.del({ url });
+        if (ignored) currentIgnored.add(userId);
+        else currentIgnored.delete(userId);
+        saveIgnoredIds([...currentIgnored]);
     } catch (error) {
         console.warn(`[Blacklist] Failed to ${ignored ? "ignore" : "unignore"} ${userId}`, error);
+    } finally {
+        pendingIgnoreRequests.delete(userId);
     }
 }
 
